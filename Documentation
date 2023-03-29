@@ -1,0 +1,22 @@
+Based on the given information, some of the most relevant features to predict SalePrice are:
+
+    OverallQual: Overall material and finish quality (Numerical)
+    GrLivArea: Above grade (ground) living area square feet (Numerical)
+    GarageCars: Size of garage in car capacity (Numerical)
+    GarageArea: Size of garage in square feet (Numerical)
+    TotalBsmtSF: Total square feet of basement area (Numerical)
+    1stFlrSF: First Floor square feet (Numerical)
+    FullBath: Number of full bathrooms above grade (Numerical)
+    TotRmsAbvGrd: Total rooms above grade (does not include bathrooms) (Numerical)
+    YearBuilt: Original construction date (Numerical discrete)
+    YearRemodAdd: Remodel date (same as construction date if no remodeling or additions) (Numerical discrete)
+    MasVnrArea: Masonry veneer area in square feet (Numerical)
+    Fireplaces: Number of fireplaces (Numerical)
+    BsmtFinSF1: Type 1 finished square feet of basement area (Numerical)
+    LotFrontage: Linear feet of street connected to property (Numerical)
+    WoodDeckSF: Wood deck area in square feet (Numerical)
+    OpenPorchSF: Open porch area in square feet (Numerical discrete)
+    2ndFlrSF: Second floor square feet (Numerical)
+    HalfBath: Number of half bathrooms above grade (Numerical)
+
+Other features that may also be relevant include MSSubClass(Categorical), MSZoning(Categorical), LotArea(Numerical), Neighborhood(Categorical), and Condition1(Categorical). However, the importance of each feature may vary depending on the specific dataset and model being used for the prediction.
