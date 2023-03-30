@@ -77,7 +77,7 @@ plt.plot(k,val_score.mean(axis=1), label='validation')
 plt.xlabel("alpha")
 plt.ylabel("score")
 plt.legend()
-
+plt.show()
 # Define hyperparameter grid
 param_grid = {'alpha': [0.1, 0.01, 0.0009, 0.2, 0.05]}
 
