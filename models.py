@@ -72,11 +72,11 @@ print(accuracy_lr.mean())
 
 k = np.arange(0,10)
 train_score, val_score = validation_curve(ridge, xtrain, ytrain,param_name='alpha', param_range=k, cv=4)
-# plt.plot(k,train_score.mean(axis=1), label='train')
-# plt.plot(k,val_score.mean(axis=1), label='validation')
-# plt.xlabel("alpha")
-# plt.ylabel("score")
-# plt.legend()
+plt.plot(k,train_score.mean(axis=1), label='train')
+plt.plot(k,val_score.mean(axis=1), label='validation')
+plt.xlabel("alpha")
+plt.ylabel("score")
+plt.legend()
 
 # Define hyperparameter grid
 param_grid = {'alpha': [0.1, 0.01, 0.0009, 0.2, 0.05]}
@@ -132,3 +132,21 @@ def mean_absolute_percentage_error(y_true, y_pred):
 # Calculate the MAPE
 mape = mean_absolute_percentage_error(ytest, ypred)
 print(f'MAPE: {mape:.2f}%')
+
+# Perform cross-validation and record the performance metrics
+cv_results = xgb.cv(
+    param,
+    dtrain,
+    num_round,
+    nfold=5,
+    metrics='rmse',
+    early_stopping_rounds=10
+)
+
+# Plot the learning curve
+plt.plot(cv_results['train-rmse-mean'], label='Train')
+plt.plot(cv_results['test-rmse-mean'], label='Test')
+plt.xlabel('Round')
+plt.ylabel('rmse')
+plt.legend()
+plt.show()
