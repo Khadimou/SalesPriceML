@@ -7,6 +7,17 @@ Original file is located at
     https://colab.research.google.com/drive/1Aynm_wmM09gXkXFDVE5SIkMrUef66pw7
 """
 
+import numpy as np
+import pandas as pd
+import seaborn as sns
+import matplotlib.pyplot as plt
+from sklearn.preprocessing import StandardScaler,MinMaxScaler
+from sklearn.preprocessing import LabelEncoder,OrdinalEncoder,OneHotEncoder
+from sklearn.tree import DecisionTreeRegressor
+from sklearn.ensemble import RandomForestRegressor,GradientBoostingRegressor, AdaBoostRegressor, BaggingRegressor, StackingRegressor
+
+
+
 # Pour concaténer les deux dataframes
 def gather_data(df1,df2):
    data=pd.concat([df1,df2],ignore_index=True, axis=1)
