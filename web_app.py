@@ -19,9 +19,9 @@ from sklearn.preprocessing import MinMaxScaler
 from sklearn.model_selection import train_test_split, cross_val_score
 from streamlit_option_menu import option_menu
 from sklearn.compose import ColumnTransformer
-from sklearn.preprocessing import OneHotEncoder 
-from sklearn.pipeline import make_pipeline
+from sklearn.preprocessing import OneHotEncoder, OrdinalEncoder
 from sklearn.compose import make_column_selector as selector
+import pickle
 
 
 df = pd.read_csv("housing_dataset.csv")
@@ -161,13 +161,31 @@ def preprocess_data(df_arg,features, train_size=0.8):
     categorical_columns = categorical_columns_selector(x_inputs)
     preprocessor = ColumnTransformer(transformers=[
     ('one-hot-encoder', categorical_preprocessor,categorical_columns),
-    ('min_max_scaler', numerical_preprocessor, numerical_columns)])
+    ('min_max_scaler', numerical_preprocessor, numerical_columns)]) 
     X_processed= preprocessor.fit_transform(x_inputs)
     #y_processed = (df_arg.copy()["SalePrice"]-df_arg.copy()["SalePrice"].min())/((df_arg.copy()["SalePrice"].max()-df_arg.copy()["SalePrice"].min()))
     y_processed = df_arg.copy()["SalePrice"]
     trainX, testX, trainY, testY= train_test_split(X_processed, y_processed, train_size=train_size)
     #trainX.shape, testY.shape
     return trainX, testX, trainY,testY,X_processed,y_processed
+@st.cache_data
+def predict_house_price(user_input_data, _predictor):
+    categorical_preprocessor = OrdinalEncoder(handle_unknown="use_encoded_value", unknown_value =1)
+    numerical_preprocessor = MinMaxScaler()
+    numerical_columns_selector = selector(dtype_exclude=object)
+    categorical_columns_selector = selector(dtype_include=object)
+    numerical_columns = numerical_columns_selector(user_input_data)
+    categorical_columns = categorical_columns_selector(user_input_data)
+    preprocessor = ColumnTransformer(transformers=[
+    ('ordinalEncoder', categorical_preprocessor,categorical_columns),
+    ('min_max_scaler', numerical_preprocessor, numerical_columns)])
+    X_processed= preprocessor.fit_transform(user_input_data)
+    #print(X_processed.shape)
+    result = _predictor.predict(X_processed)
+    return result
+    
+
+
 @st.cache_data 
 def get_metrics(y_true, y_pred,precision=5):
     metrics_dict  = {"MSE": 0,"MAE":0, "RMSE":0,"MAPE":0}
@@ -216,15 +234,29 @@ selected_page = option_menu(
 )
 
 if selected_page=="Home":
-    with st.sidebar:
-        top_n = st.slider("nrows",5,100,5,5)
+    top_n = st.sidebar.slider("nrows",5,100,5,5)
+    current_model = st.sidebar.selectbox("Select model to use",options=["RandomForestRegressor","GradientBoostingRegressor","HistGradientBoostingRegressor","ExtraTreesRegressor","SVR"])
+    saved_model = {"RandomForestRegressor":open("models/randomForest.pkl","rb"), "GradientBoostingRegressor":open("models/gradientboosting.pkl","rb"),"HistGradientBoostingRegressor":open("models/histgradboosting.pkl","rb"),"ExtraTreesRegressor":open("models/extratreesreg.pkl","rb"),"SVR":open("models/svr.pkl","rb")}
+    st.sidebar.subheader("Select your criteria")
+    predictor = pickle.load(saved_model[current_model])
+    user_inp = pd.DataFrame({"'KitchenQual":[st.sidebar.selectbox("KitchenQual",np.unique(df["KitchenQual"]))],"ExterQual":[st.sidebar.selectbox("ExterQual",np.unique(df["KitchenQual"]))],"TotalBsmtSF":[st.sidebar.slider("TotalBsmtSF",float(df["TotalBsmtSF"].min()),float(df["TotalBsmtSF"].max()))],
+        "GrLivArea":[st.sidebar.slider("GrLivArea",float(df["GrLivArea"].min()),float(df["GrLivArea"].max()))]})
+    user_inp_col, price_col = st.columns(2)
+    user_inp_col.subheader("features value")
+    user_inp_col.dataframe(user_inp)
+    house_price = predict_house_price(user_inp,predictor)
+    price_col.subheader("Prediction result")
+    price_col.metric(":house_buildings:",f"{np.mean([round(x,2) for x in house_price])} 💲")
+    #price_col.metric("Real Price",f"{np.mean([round(x,2) for x in real_price])} $")
+    st.subheader("Overview on data")
     st.dataframe(df.head(top_n),use_container_width=True)
+
 
 if selected_page=="EDA":
     with st.sidebar:
         k= st.slider("Select k to detect outliers",0.0,5.0,0.5)
         eda_plot = st.selectbox("Plot type",options = ["Box","Scatter","Line"])
-        x_col = st.selectbox("X",options =df.select_dtypes(include =["int64"]).columns)
+        x_col = st.selectbox("X",options =df.select_dtypes(include =["int64"]).drop(columns=["Id"], axis=1).columns)
     distrib_col, val_col = st.columns(2)
     val_col.subheader("Validation result")
     val_col.pyplot(plot_validation(eda_plot,x_col,k))
@@ -254,7 +286,7 @@ if selected_page=="Feature Engineering":
     #feat_freq_df.sort_values("Frequence", ascending =False)
     
     feat_freq_df = feat_freq_df[feat_freq_df.Feature!="SalePrice"]
-    final_feat_freq_df = feat_freq_df[feat_freq_df.Frequence>num_feat_freq]
+    final_feat_freq_df = feat_freq_df[feat_freq_df.Frequence>=num_feat_freq]
     feat_selection_data = {"Correlation":corr_feat_list,"RandomForestReg":rf_feat_list,"Recrusive":rfe_feat_list,"Mitual Information Reg":mif_feat_list,"LassoReg":lasso_feat_list}
     if data_or_plot=="Data":
         feat_sel_col, feat_df_col = st.columns(2)
@@ -263,29 +295,33 @@ if selected_page=="Feature Engineering":
         feat_df_col.subheader("Final numerical selected features")
         feat_df_col.dataframe(final_feat_freq_df.sort_values("Frequence", ascending=False), use_container_width=True)
         feat_df_col.subheader("Final mixed features data")
-        feat_df_col.dataframe(pd.concat([numerical_feature_df[numerical_feature_df.Frequence>num_th],categorical_feature_df[categorical_feature_df.Frequence>categ_th]]),use_container_width=True)
+        feat_df_col.dataframe(pd.concat([numerical_feature_df[numerical_feature_df.Frequence>=num_th],categorical_feature_df[categorical_feature_df.Frequence>=categ_th]]),use_container_width=True)
         feature = feature_selector(num_th,categ_th)
         feat_sel_col.subheader("Final mixed features")
         feat_sel_col.dataframe(feature, use_container_width=True)
     else:
        corr= df.select_dtypes(include=["int64"]).corr()
        corr_col, rf_plot_col = st.columns(2)
+
        corr_col.subheader("Correlation matrix")
        fig, ax = plt.subplots()
        plt.figure(figsize= (20,10))
        plt.title('Correlation')
        sns.heatmap(corr[corr>corr_threshold],vmin = -1, cmap = "coolwarm",vmax = 1, annot = True, ax = ax) 
        corr_col.pyplot(fig)
-       rf_plot_col.subheader("Random forest features importances")
+
+       rf_plot_col.subheader("RF selected features")
        fig, ax1= plt.subplots()
        rf_feat_importance.plot.barh(ax=ax1)
        rf_plot_col.pyplot(fig)
        
        fig, ax2= plt.subplots()
+       corr_col.subheader("Numerical")
        final_feat_freq_df.sort_values("Frequence", ascending=False).plot.barh(x = "Feature",ax =ax2)
        corr_col.pyplot(fig)
-       
+
        fig, ax3= plt.subplots()
+       rf_plot_col.subheader("Both")
        pd.concat([numerical_feature_df[numerical_feature_df.Frequence>num_th],categorical_feature_df[categorical_feature_df.Frequence>categ_th]]).sort_values("Frequence", ascending=False).plot.barh(x = "Feature",ax =ax3)
        rf_plot_col.pyplot(fig)
 
@@ -295,12 +331,12 @@ if selected_page=="Modelisation":
         feat_type = st.radio("Feature type", options =["Numerical","Both"])
         st.subheader("Select final features")
         model_type= st.selectbox("Select a model",options=["RadomForestReg","GradientBoostReg","HistGradienBoot","ExtraTreesReg","SVR"])
-        models_dict=  {"RadomForestReg":RandomForestRegressor(),"GradientBoostReg":GradientBoostingRegressor(),"HistGradienBoot":HistGradientBoostingRegressor(),"ExtraTressReg":ExtraTreesRegressor()}
+        models_dict=  {"RadomForestReg":RandomForestRegressor(),"GradientBoostReg":GradientBoostingRegressor(),"HistGradienBoot":HistGradientBoostingRegressor(),"ExtraTreesReg":ExtraTreesRegressor(), "SVR":svm.SVR()}
         if feat_type=="Numerical":
             num_th=  st.slider("numerical feature",2,5,2,1)
             feature = numerical_feature_df[numerical_feature_df.Frequence>num_th].Feature.values
         if feat_type=="Both":
-            both_th=  st.slider("categorical feature",2,6,2,1)
+            both_th=  st.slider("Mixed features",2,6,2,1)
             feature= pd.concat([numerical_feature_df[numerical_feature_df.Frequence>both_th],categorical_feature_df[categorical_feature_df.Frequence>both_th]]).Feature.values
 
     df_work=remove_outliers_iqr(df,3)
