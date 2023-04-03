@@ -62,7 +62,7 @@ def plot_view(x_col,k,numerical_df= df.select_dtypes(include=["int64"]),target =
 def plot_validation(plot_type,x_col,k,numerical_df= df.select_dtypes(include=["int64"]),target = "SalePrice"):
     df_res = remove_outliers_iqr(numerical_df.copy(),k)
     if plot_type =="Scatter":
-        fig, ax= plt.subplots()
+        fig, ax= plt.subplots(figsize =(20,20))
         numerical_df.plot.scatter(x=x_col, y = target,ax = ax, color ="red")
         df_res.plot.scatter(x=x_col, y = target, ax = ax, color = "green")
     if plot_type=="Box":
@@ -78,8 +78,7 @@ def plot_distribution(x_col,k,numerical_df= df.select_dtypes(include=["int64"]))
     fig,ax = plt.subplots(figsize =(20,20))
     sns.distplot(df_res[x_col])
     return fig
-
-        
+    
     
 ## feature selection technique
 @st.cache_data
@@ -143,7 +142,7 @@ def mif_feature_selector(df_arg=df.select_dtypes(include=["int64"]),target_name 
 def feature_selector(num_threshold, categ_threshold,num_feat_df=numerical_feature_df, categ_feat_df=categorical_feature_df):
     numerical_feature_list = numerical_feature_df[numerical_feature_df["Frequence"]>num_threshold].Feature.values
     categorical_feature_list = categorical_feature_df[categorical_feature_df["Frequence"]>categ_threshold].Feature.values
-    final_feature = list(numerical_feature_list)+list(categorical_feature_list )
+    final_feature = list(numerical_feature_list)+list(categorical_feature_list)
     return final_feature
 
 ##########################################################################################
@@ -217,10 +216,10 @@ def fit_models(_model,df_arg,feature):
 def display_model_res(_model, df_arg, feature):
     y_pred, train_pred, metrics_data, cross_val_score= fit_models(_model,df_arg,feature)
     cv_col, metrics_col=st.columns(2)
-    cv_col.metric("number of feature",value =f"{len(feature)}")
+    cv_col.metric("Number of feature",value =f"{len(feature)}")
     #cv_col.subheader("Cross validation")
     cv_col.metric("Coss validation score", value = f'{round(cross_val_score["mean"],5)} +/-{round(cross_val_score["std"],5)}')
-    metrics_col.subheader("Evaluation metrics")
+    metrics_col.subheader("Metrics")
     metrics_col.dataframe(metrics_data)
 
 st.title("House Price Prediction Tool")
@@ -229,7 +228,7 @@ selected_page = option_menu(
     "",
     options=["Home", "EDA", "Feature Engineering", "Modelisation"],
     menu_icon="cast",
-    icons=["house-fill", "database-add", "graph-up", "calculator-fill"],
+    icons=["house-fill", "pie-chart-fill", "graph-up", "gear-fill"],
     orientation="horizontal",
 )
 
@@ -242,7 +241,7 @@ if selected_page=="Home":
     user_inp = pd.DataFrame({"'KitchenQual":[st.sidebar.selectbox("KitchenQual",np.unique(df["KitchenQual"]))],"ExterQual":[st.sidebar.selectbox("ExterQual",np.unique(df["KitchenQual"]))],"TotalBsmtSF":[st.sidebar.slider("TotalBsmtSF",float(df["TotalBsmtSF"].min()),float(df["TotalBsmtSF"].max()))],
         "GrLivArea":[st.sidebar.slider("GrLivArea",float(df["GrLivArea"].min()),float(df["GrLivArea"].max()))]})
     user_inp_col, price_col = st.columns(2)
-    user_inp_col.subheader("features value")
+    user_inp_col.subheader("Features value")
     user_inp_col.dataframe(user_inp)
     house_price = predict_house_price(user_inp,predictor)
     price_col.subheader("Prediction result")
@@ -254,7 +253,7 @@ if selected_page=="Home":
 
 if selected_page=="EDA":
     with st.sidebar:
-        k= st.slider("Select k to detect outliers",0.0,5.0,0.5)
+        k= st.slider("Select k to detect outliers",0.0,5.0,1.5)
         eda_plot = st.selectbox("Plot type",options = ["Box","Scatter","Line"])
         x_col = st.selectbox("X",options =df.select_dtypes(include =["int64"]).drop(columns=["Id"], axis=1).columns)
     distrib_col, val_col = st.columns(2)
@@ -267,12 +266,12 @@ if selected_page=="Feature Engineering":
     with st.sidebar:
         data_or_plot = st.radio("View as",options=["Data","Plots"])
         feature_selection_technique = st.selectbox("Feature selector",options = ["Correlation","RandomForestReg","Recrusive","Mitual Information Reg","LassoReg"])
-        top_n_rf = st.slider("Top n Random Forest Features",1,20,3,1)
+        top_n_rf = st.slider("Top n selected features by R",1,20,3,1)
         corr_threshold = st.slider("Correlation threshold",0.0,1.0,0.1)
-        num_feat_freq = st.slider("Numerical feature selection frequence",1,6,1)
-        st.subheader("Select final features")
-        num_th=  st.slider("numerical feature",2,5,2,1)
-        categ_th=  st.slider("categorical feature",2,6,2,1)
+        num_feat_freq = st.slider("Select feature base on frequence",1,6,1)
+        st.subheader("Options filter global features")
+        num_th=  st.slider("numerical feature freuence",2,5,2,1)
+        categ_th=  st.slider("categorical feature frequence",2,6,2,1)
     # Appel des fonction de selection
     target_corr, corr_feat_list =corr_feature_selector(corr_threshold)
     rf_feat_importance, rf_feat_list = rf_features_selector(top_n_rf)
@@ -290,14 +289,14 @@ if selected_page=="Feature Engineering":
     feat_selection_data = {"Correlation":corr_feat_list,"RandomForestReg":rf_feat_list,"Recrusive":rfe_feat_list,"Mitual Information Reg":mif_feat_list,"LassoReg":lasso_feat_list}
     if data_or_plot=="Data":
         feat_sel_col, feat_df_col = st.columns(2)
-        feat_sel_col.subheader(f"Seleced Features with {feature_selection_technique}")
+        feat_sel_col.subheader(f"Seleced features with {feature_selection_technique}")
         feat_selector_result = feat_sel_col.dataframe(feat_selection_data[feature_selection_technique], use_container_width=True)
-        feat_df_col.subheader("Final numerical selected features")
+        feat_df_col.subheader("Numerical features data")
         feat_df_col.dataframe(final_feat_freq_df.sort_values("Frequence", ascending=False), use_container_width=True)
-        feat_df_col.subheader("Final mixed features data")
+        feat_df_col.subheader("Mixed features data")
         feat_df_col.dataframe(pd.concat([numerical_feature_df[numerical_feature_df.Frequence>=num_th],categorical_feature_df[categorical_feature_df.Frequence>=categ_th]]),use_container_width=True)
         feature = feature_selector(num_th,categ_th)
-        feat_sel_col.subheader("Final mixed features")
+        feat_sel_col.subheader("Mixed features")
         feat_sel_col.dataframe(feature, use_container_width=True)
     else:
        corr= df.select_dtypes(include=["int64"]).corr()
@@ -329,11 +328,11 @@ if selected_page=="Feature Engineering":
 if selected_page=="Modelisation":
     with st.sidebar:
         feat_type = st.radio("Feature type", options =["Numerical","Both"])
-        st.subheader("Select final features")
-        model_type= st.selectbox("Select a model",options=["RadomForestReg","GradientBoostReg","HistGradienBoot","ExtraTreesReg","SVR"])
-        models_dict=  {"RadomForestReg":RandomForestRegressor(),"GradientBoostReg":GradientBoostingRegressor(),"HistGradienBoot":HistGradientBoostingRegressor(),"ExtraTreesReg":ExtraTreesRegressor(), "SVR":svm.SVR()}
+        #st.subheader("Select features")
+        model_type= st.selectbox("Select a model",options=["RadomForestRegressor","GradientBoostingRegressor","HistGradientBootingRegressor","ExtraTreesRegressor","SVR"])
+        models_dict=  {"RadomForestRegressor":RandomForestRegressor(),"GradientBoostingRegressor":GradientBoostingRegressor(),"HistGradientBoostingRegressor":HistGradientBoostingRegressor(),"ExtraTreesRegressor":ExtraTreesRegressor(), "SVR":svm.SVR()}
         if feat_type=="Numerical":
-            num_th=  st.slider("numerical feature",2,5,2,1)
+            num_th=  st.slider("Numerical feature",2,5,2,1)
             feature = numerical_feature_df[numerical_feature_df.Frequence>num_th].Feature.values
         if feat_type=="Both":
             both_th=  st.slider("Mixed features",2,6,2,1)
