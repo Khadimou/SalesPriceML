@@ -31,6 +31,7 @@ Pour lancer la web application, il faut:
 1. se rendre dans le dossier SalesPriceML
 2. activer l'environnement virtuel avec la comme **.\app_env\Scripts\activate**
 3. lancer la web application avec la commande **streamlit run web_app.py**
+
 La web application est composée des sections suivanes:
  ### Home 
 Ici, l'utilisateur peut prédire le prix de vente en choisissant ses critères sur 4 caractéristiques
